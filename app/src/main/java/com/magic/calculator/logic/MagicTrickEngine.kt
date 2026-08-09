@@ -28,17 +28,17 @@ class MagicTrickEngine {
     }
 
     /**
-     * Generates timestamp based on current Date/Time without seconds.
+     * Generates timestamp based on Date/Time 1 minute in the future without seconds.
      * Format: DMMYYHHmm (9 digits if day < 10) or DDMMYYHHmm (10 digits if day >= 10).
      * Guaranteed to NEVER start with 0.
      */
     fun generateTargetTimestamp(): Long {
-        val now = LocalDateTime.now()
-        val day = now.dayOfMonth // 1 to 31
-        val month = String.format("%02d", now.monthValue)
-        val year = now.format(DateTimeFormatter.ofPattern("yy"))
-        val hour = String.format("%02d", now.hour)
-        val minute = String.format("%02d", now.minute)
+        val targetTime = LocalDateTime.now().plusMinutes(1)
+        val day = targetTime.dayOfMonth // 1 to 31
+        val month = String.format("%02d", targetTime.monthValue)
+        val year = targetTime.format(DateTimeFormatter.ofPattern("yy"))
+        val hour = String.format("%02d", targetTime.hour)
+        val minute = String.format("%02d", targetTime.minute)
 
         val timestampStr = "$day$month$year$hour$minute"
         return timestampStr.toLongOrNull() ?: 608260626L
