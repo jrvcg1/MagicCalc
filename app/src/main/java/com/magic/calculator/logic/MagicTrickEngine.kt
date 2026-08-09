@@ -90,10 +90,15 @@ class MagicTrickEngine {
      * Called when a spectator presses any digit key ('0'..'9') during forcing mode.
      * Returns the character to display:
      * - The forced character for the first 3 digits of forcedDigitsString.
-     * - The real digit pressed by spectator for subsequent digits (digits 4+).
+     * - The real digit pressed by spectator for subsequent digits (digits 4 to 9).
+     * - Null once 9 digits have been entered (ignoring extra digits).
      */
     fun getNextForcedDigit(realDigit: Char): Char? {
         if (!isMagicActive || !isForcingPhase || forcedDigitsString.isEmpty()) {
+            return null
+        }
+
+        if (spectatorDigitIndex >= 9) {
             return null
         }
 
@@ -126,10 +131,10 @@ class MagicTrickEngine {
     }
 
     /**
-     * Returns true if forcing is active.
+     * Returns true if forcing is active and fewer than 9 digits have been entered.
      */
     fun hasPendingForcedDigits(): Boolean {
-        return isMagicActive && isForcingPhase
+        return isMagicActive && isForcingPhase && spectatorDigitIndex < 9
     }
 
     /**
@@ -143,18 +148,15 @@ class MagicTrickEngine {
 
     /**
      * Evaluates the final result when '=' is pressed.
-     * Evaluates the actual mathematical expression so that it matches 100% on any device.
+     * Always returns the expected Target Timestamp DDMMYYHH(mm+1).
      */
     fun handleEquals(currentExpression: String): String? {
         if (!isMagicActive) return null
 
         if (isForcingPhase && initialProduct > 0) {
-            val evaluated = CalculatorEngine.evaluate(currentExpression)
+            val targetTimestampStr = generateTargetTimestamp().toString()
             resetTrickState()
-            if (evaluated.isNotEmpty()) {
-                return evaluated
-            }
-            return generateTargetTimestamp().toString()
+            return targetTimestampStr
         }
         return null
     }
