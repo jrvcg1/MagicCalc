@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +37,7 @@ fun CalculatorScreen() {
     var expression by remember { mutableStateOf("") }
     var resultText by remember { mutableStateOf("") }
     var isMagicActive by remember { mutableStateOf(false) }
+    var isPeekingComplement by remember { mutableStateOf(false) }
 
     fun triggerVibration() {
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -57,11 +60,10 @@ fun CalculatorScreen() {
 
     fun onDigitPressed(digitChar: Char) {
         if (magicEngine.isForcingActive()) {
-            val forcedDigit = magicEngine.getNextForcedDigit()
+            val forcedDigit = magicEngine.getNextForcedDigit(digitChar)
             if (forcedDigit != null) {
                 expression += forcedDigit
             }
-            // If spectator completed forced number and taps extra keys, ignore them!
             resultText = ""
             return
         }
@@ -157,11 +159,17 @@ fun CalculatorScreen() {
                     verticalArrangement = Arrangement.Bottom,
                     horizontalAlignment = Alignment.End
                 ) {
+                    val displayedExpression = if (isPeekingComplement) {
+                        magicEngine.getExpressionWithFullComplement(expression)
+                    } else {
+                        expression
+                    }
+
                     // Secondary / Expression line
                     Text(
-                        text = expression,
+                        text = displayedExpression,
                         color = Color(0xFF9CA3AF),
-                        fontSize = if (expression.length > 15) 24.sp else 32.sp,
+                        fontSize = if (displayedExpression.length > 15) 24.sp else 32.sp,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.End,
@@ -271,7 +279,21 @@ fun CalculatorScreen() {
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CalcButton("0", NumberButtonColor, NumberTextColor, Modifier.weight(1f)) { onDigitPressed('0') }
-                        CalcButton(".", NumberButtonColor, NumberTextColor, Modifier.weight(1f)) { onDigitPressed('.') }
+                        CalcButton(
+                            text = ".",
+                            containerColor = NumberButtonColor,
+                            contentColor = NumberTextColor,
+                            modifier = Modifier.weight(1f),
+                            onPressDown = {
+                                if (magicEngine.isForcingActive()) {
+                                    isPeekingComplement = true
+                                }
+                            },
+                            onPressUp = {
+                                isPeekingComplement = false
+                            },
+                            onClick = { onDigitPressed('.') }
+                        )
                         IconButton(
                             containerColor = FunctionButtonColor,
                             modifier = Modifier.weight(1f),
@@ -291,7 +313,6 @@ fun CalculatorScreen() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CalcButton(
     text: String,
@@ -299,6 +320,8 @@ fun CalcButton(
     contentColor: Color,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    onPressDown: (() -> Unit)? = null,
+    onPressUp: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     Box(
@@ -307,10 +330,17 @@ fun CalcButton(
             .aspectRatio(1f)
             .clip(CircleShape)
             .background(containerColor)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        onPressDown?.invoke()
+                        tryAwaitRelease()
+                        onPressUp?.invoke()
+                    },
+                    onTap = { onClick() },
+                    onLongPress = { onLongClick?.invoke() }
+                )
+            }
     ) {
         Text(
             text = text,

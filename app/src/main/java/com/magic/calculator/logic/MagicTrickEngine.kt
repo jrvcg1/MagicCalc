@@ -88,26 +88,48 @@ class MagicTrickEngine {
 
     /**
      * Called when a spectator presses any digit key ('0'..'9') during forcing mode.
-     * Returns the next forced character (digit or decimal point), or null if forcing is not active.
+     * Returns the character to display:
+     * - The forced character for the first 3 digits of forcedDigitsString.
+     * - The real digit pressed by spectator for subsequent digits (digits 4+).
      */
-    fun getNextForcedDigit(): Char? {
+    fun getNextForcedDigit(realDigit: Char): Char? {
         if (!isMagicActive || !isForcingPhase || forcedDigitsString.isEmpty()) {
             return null
         }
 
-        if (spectatorDigitIndex < forcedDigitsString.length) {
-            val digit = forcedDigitsString[spectatorDigitIndex]
-            spectatorDigitIndex++
-            return digit
+        val digitToUse = if (spectatorDigitIndex < 3 && spectatorDigitIndex < forcedDigitsString.length) {
+            forcedDigitsString[spectatorDigitIndex]
+        } else {
+            realDigit
         }
-        return null
+        spectatorDigitIndex++
+        return digitToUse
     }
 
     /**
-     * Returns true if forcing is active and there are still forced digits left to be typed by spectator.
+     * Returns the full complement string required for the trick.
+     */
+    fun getFullForcedComplement(): String = forcedDigitsString
+
+    /**
+     * Replaces the last number in currentExpression with the full forced complement X.
+     */
+    fun getExpressionWithFullComplement(currentExpression: String): String {
+        if (!isForcingPhase || forcedDigitsString.isEmpty()) return currentExpression
+
+        val lastOpIndex = currentExpression.lastIndexOfAny(charArrayOf('+', '×', '-', '÷'))
+        return if (lastOpIndex != -1) {
+            currentExpression.substring(0, lastOpIndex + 1) + forcedDigitsString
+        } else {
+            forcedDigitsString
+        }
+    }
+
+    /**
+     * Returns true if forcing is active.
      */
     fun hasPendingForcedDigits(): Boolean {
-        return isMagicActive && isForcingPhase && spectatorDigitIndex < forcedDigitsString.length
+        return isMagicActive && isForcingPhase
     }
 
     /**
