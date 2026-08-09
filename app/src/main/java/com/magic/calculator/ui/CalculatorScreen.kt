@@ -110,11 +110,13 @@ fun CalculatorScreen() {
     fun onClearPressed() {
         expression = ""
         resultText = ""
+        isPeekingComplement = false
         magicEngine.resetTrickState()
     }
 
     fun onEqualsPressed() {
         val magicResult = magicEngine.handleEquals(expression)
+        isPeekingComplement = false
         if (magicResult != null) {
             resultText = magicResult
             expression = ""
@@ -134,7 +136,13 @@ fun CalculatorScreen() {
         Box(modifier = Modifier.fillMaxSize()) {
             // Subtle visual indicator for Magic Mode (imperceptible dot at top-left corner)
             if (isMagicActive) {
-                val dotColor = if (magicEngine.hasPendingForcedDigits()) Color.White else Color(0xFF3B3E42)
+                val dotColor = if (isPeekingComplement) {
+                    Color(0xFF81C784) // Light green indicator when full complement is toggled visible
+                } else if (magicEngine.hasPendingForcedDigits()) {
+                    Color.White
+                } else {
+                    Color(0xFF3B3E42)
+                }
                 Box(
                     modifier = Modifier
                         .padding(top = 36.dp, start = 16.dp)
@@ -284,13 +292,11 @@ fun CalculatorScreen() {
                             containerColor = NumberButtonColor,
                             contentColor = NumberTextColor,
                             modifier = Modifier.weight(1f),
-                            onPressDown = {
+                            onLongClick = {
                                 if (magicEngine.isForcingActive()) {
-                                    isPeekingComplement = true
+                                    isPeekingComplement = !isPeekingComplement
+                                    triggerVibration()
                                 }
-                            },
-                            onPressUp = {
-                                isPeekingComplement = false
                             },
                             onClick = { onDigitPressed('.') }
                         )
